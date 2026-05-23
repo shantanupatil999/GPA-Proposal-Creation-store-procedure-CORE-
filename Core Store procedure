@@ -1,0 +1,1482 @@
+
+
+
+   --usp_GPA_CheckDataValidationOfPolicyInsuranceThruWebAPI      
+ALTER PROCEDURE [dbo].[usp_GPA_NET_CheckDataValidationOfProposalInsurancemigr]          
+ -- Add the parameters for the stored procedure here            
+  @inputrequestjson nvarchar(max),       
+  @TokenIdOfLogTable VARCHAR(20) ,              
+  @UserIpAddress varchar(200)  ,
+  @PolicyType varchar(20)                
+AS           
+BEGIN            
+BEGIN TRY            
+ SET NOCOUNT ON;            
+                  
+ DECLARE @tblGPAPolicyInsuranceOutput TABLE                
+ (                
+  [ID] INT IDENTITY(1,1) PRIMARY KEY,       
+  ReturnStatus VARCHAR(50) NULL,              
+  ReturnMessage VARCHAR(100) NULL,              
+  AlertEmailID VARCHAR(100) NULL,              
+  ErrorCode VARCHAR(50) NULL,              
+  IsPaymentValidateThroughWebAPI BIT NULL,              
+  InsuredName varchar(100) NULL,              
+  IdentificationNo varchar(50) NULL,             
+  PolicyIssueID BIGINT NULL,             
+  NameofPlanExist TINYINT NULL,          
+  DeptNameExist TINYINT NULL,          
+  IsGPAPlan TINYINT NULL,          
+  BranchCodeExist TINYINT NULL,          
+  UserProductPlanMappingExist TINYINT NULL,          
+  UserExcelBranchUploadRight TINYINT NULL,          
+  CheckMasterPolicyAndPlan TINYINT NULL,          
+  PlanCompanyMappingExist TINYINT NULL,          
+  CheckDatePEValidation TINYINT NULL,          
+  CompanyBranchMappingExist TINYINT NULL,          
+  BranchDeptMappingExist TINYINT NULL,          
+  ExcelUserDeptUploadRight TINYINT NULL,          
+  StateExistinMOM TINYINT NULL,          
+  IsIssueDateValidation TINYINT NULL,          
+  IsValidCity TINYINT NULL,          
+  IsValidPinCode TINYINT NULL,          
+  IsValid_MobileNumber TINYINT NULL,          
+  IsValid_EmailID TINYINT NULL,          
+  IsvalidGSTIN TINYINT NULL,          
+  ISvalidInsured_DOB TINYINT NULL,          
+  IsValidAgeCheck TINYINT NULL,          
+  IsValidRegistration_Number TINYINT NULL,          
+  IsValidRegistration_Date TINYINT NULL,          
+  IsValidSumInsured TINYINT NULL,          
+  IsValidSPCode TINYINT NULL,          
+  IsValidServiceTaxDate TINYINT NULL,          
+  IsValidSalutation TINYINT NULL,          
+  IsValidGenderbySalutation TINYINT NULL,           
+  IsValidNomineeGender TINYINT NULL,          
+  IsValidCustomertype TINYINT NULL,          
+  --IsValidLoanTenureEndDate TINYINT NULL,          
+  IsDuplicate TINYINT NULL,          
+  NetPremiumRate NUMERIC(18,2) NULL,            
+  BasicPremium NUMERIC(18,2) NULL,            
+  TaxPercentage NUMERIC(18,2) NULL,           
+  TaxPremium NUMERIC(18,2) NULL,           
+  CertificateNumber NVARCHAR(20) NULL,                    
+  CGSTTaxPercentage NUMERIC(18,2) NULL,            
+  IGSTTaxPercentage NUMERIC(18,2) NULL,            
+  SGSTTaxPercentage NUMERIC(18,2) NULL,            
+  UGSTTaxPercentage NUMERIC(18,2) NULL,             
+  KFCTaxPercentage NUMERIC(18,2) NULL,            
+  CGSTTaxPremium NUMERIC(18,2) NULL,            
+  IGSTTaxPremium NUMERIC(18,2) NULL,            
+  SGSTTaxPremium NUMERIC(18,2) NULL,            
+  UGSTTaxPremium NUMERIC(18,2) NULL,            
+  KFCTaxPremium NUMERIC(18,2) NULL,          
+  ProposalNumber VARCHAR(20) NULL,          
+  TransactionId Varchar(50) NULL,      
+  IsValidABHAID TINYINT NULL,        
+  IsValidABHAAddress TINYINT NULL,
+  IsLimitTypeExists tinyint,
+  IsCDAccountExist tinyint,
+  IsBalanceLimitOver tinyint,
+  IsIdentificationNumberDuplicate TINYINT,
+  IsDuplicatePaymentReferenceNumber TINYINT NULL,
+  IsValidRelationWithProposer TINYINT NULL,
+  Payment_Reference_Number [varchar](50),
+  Payment_Collected_by_Partner [numeric](18, 2) NULL,        
+  Payment_Collected_Date [varchar](100) NULL,        
+  InputDateFormat [varchar](100) NULL,        
+  Policy_Start_Date [varchar](100) NULL,        
+  Policy_End_Date [varchar](100) NULL
+            
+ );           
+      
+ DECLARE            
+    @Company_Branch_Code [varchar](50),          
+    @Name_Of_The_Plan [varchar](50),          
+    @Company_dept_Name [varchar](50),          
+    @UserName [varchar](max),          
+    @EncryptedPassword [varchar](max),          
+    @BusinessType [varchar](50),          
+    @PreviousPolicyNumber [varchar](50),          
+    @PreviousPolicyEndDate DATETIME,          
+    @MasterPolicyNumber [VARCHAR](100),          
+    @Policy_Start_Date DATETIME,          
+ --@Loan_Tenure_End_Date DATETIME,          
+    @Customer_Type [varchar](50),          
+    @Salutation [varchar](20),          
+    @Insured_Name [varchar](50),          
+    @Insured_DOB DATETIME,          
+    @Insured_Gender [varchar](50),          
+    @Identification_Number [varchar](50),          
+    @AddressLine1 [varchar](100),          
+    @AddressLine2 [varchar](100),          
+    @State [varchar](50),          
+    @City [varchar](50),          
+    @Pincode [varchar](10),          
+    @EmailID [varchar](50),          
+    @MobileNumber [varchar](50),          
+    @Occupation [varchar](50),          
+   @Reference_Number [varchar](50),          
+    @Annual_Income_In_Lacs [numeric](18, 2),          
+    @Application_Signed_date DATETIME,          
+    @Name_of_the_Assignee [varchar](200),          
+    @Relationship_of_the_assignee_with_the_Insured [varchar](50),          
+    @Registration_Number [varchar](200),          
+    @Registration_Date DATETIME,          
+    @Other_Relevent_Information [varchar](200),          
+    @Sales_Remark [varchar](200),          
+    @SumInsured [numeric](18, 2),          
+    @Nominee_Name [varchar](50),          
+    @Nominee_Gender [varchar](50),          
+    @Nominee_DOB DATETIME,          
+    @Relationship_with_Proposer [varchar](50),          
+    @Registered_under_GST [char](10),          
+    @GSTIN [varchar](100),          
+    @SP_Code [varchar](50),        
+    @IsABHAAccountExists[varchar](10),  --ABHA CR                      
+    @ABHAAddress[varchar](500),--ABHA CR                          
+    @ABHAID[varchar](500),   --ABHA CR   
+    @LoanAccountNumber varchar(20),
+    @SystemType [varchar](200),
+	@Payment_Reference_Number [varchar](50),
+    @Payment_Collected_by_Partner [numeric](18, 2),              
+    @Payment_Collected_Date [varchar](100),        
+    @InputDateFormat [varchar](100),
+	@ProductCodeFromInput [NVARCHAR](100)
+        
+ DECLARE @CompanyId INT            
+ ,@BankIDFK INT            
+ ,@UserID UNIQUEIDENTIFIER                    
+ ,@UserRole VARCHAR(50)                
+ ,@PolicyIssueDate DATETIME            
+ ,@Policy_End_Date DATETIME          
+ ,@NameofPlanExist TINYINT            
+ ,@RGICLBranchId INT                   
+ ,@BranchCodeExist TINYINT                    
+ ,@DeptNameExist TINYINT                  
+ ,@CheckDatePSValidation TINYINT                    
+ ,@CheckDatePEValidation TINYINT            
+ ,@CheckDateDOBValidation TINYINT            
+ ,@BranchDeptMappingExist TINYINT                    
+ ,@CompanyBranchMappingExist TINYINT                    
+ ,@PlanCompanyMappingExist TINYINT                    
+ ,@UserProductPlanMappingExist TINYINT                    
+ ,@UserExcelBranchUploadRight TINYINT                    
+ ,@ExcelUserDeptUploadRight TINYINT             
+ ,@CheckMasterPolicyAndPlan TINYINT          
+ ,@IsPlanCoverageMappingExist TINYINT            
+,@IsIssueDateValidation TINYINT                           
+ ,@PlanID_FK INT            
+ ,@StateExistinMOM TINYINT            
+ ,@IsValidCity TINYINT            
+ ,@IsDuplicate TINYINT                    
+ ,@ReceiptNumber NVARCHAR(50)                    
+ ,@PlanCoverageID INT                    
+ ,@SAPCode NVARCHAR(20)                    
+ ,@RGICLBranchCode NVARCHAR(20)            
+ ,@CompanyBranchID INT                        
+ ,@LimitType TINYINT                 
+ ,@IsGPAPlan TINYINT              
+ ,@IsValidPinCode TINYINT             
+ ,@IsValid_MobileNumber TINYINT            
+ ,@IsValid_EmailID TINYINT            
+ ,@ISvalidInsured_DOB TINYINT          
+ ,@IsValidAgeCheck TINYINT          
+ ,@IsValidRegistration_Number TINYINT          
+ ,@IsValidRegistration_Date TINYINT          
+ ,@IsvalidGSTIN TINYINT            
+ ,@IsValidSumInsured TINYINT          
+ ,@IsValidSPCode TINYINT          
+ ,@CheckPolicyEndDateValidation TINYINT              
+ ,@ProposalNumber VARCHAR(20)               
+ ,@ProductID_FK INT            
+ ,@ProductCode nvarchar(100)            
+ ,@CompanyDepartmentID_FK INT            
+ ,@ServiceTax NUMERIC(18,2)                           
+ ,@EducationCessAmount NUMERIC(18,2)                    
+ ,@HigherEducationCessAmount NUMERIC(18,2)             
+ ,@SurchargeAmount NUMERIC(18,2)                    
+ ,@SwachhaBharatCessAmount NUMERIC(18,2)                    
+ ,@KrishiKalyanCessAmount NUMERIC(18,2)              
+ ,@SM_Code VARCHAR(50)            
+ ,@Intermediatory_Code VARCHAR(250)            
+ ,@Bas_Code VARCHAR(250)          
+ ,@ISValidPanCard TINYINT          
+ ,@IsValidServiceTaxDate TINYINT          
+ ,@IsValidSalutation TINYINT          
+ ,@IsValidGenderbySalutation TINYINT          
+ ,@IsValidNomineeGender TINYINT          
+ ,@IsValidCustomertype TINYINT          
+ --,@IsValidLoanTenureEndDate TINYINT          
+ ,@NetPremiumRate NUMERIC(18,2)            
+ ,@BasicPremium NUMERIC(18,2)            
+ ,@TaxPercentage NUMERIC(18,2)           
+ ,@TaxPremium NUMERIC(18,2)           
+ ,@CertificateNumber NVARCHAR(20) = NULL       
+ ,@GPADummyPolicyIssueID BIGINT = NULL                   
+ ,@CGSTTaxPercentage NUMERIC(18,2)            
+ ,@IGSTTaxPercentage NUMERIC(18,2)            
+ ,@SGSTTaxPercentage NUMERIC(18,2)            
+ ,@UGSTTaxPercentage NUMERIC(18,2)             
+ ,@KFCTaxPercentage NUMERIC(18,2)            
+ ,@CGSTTaxPremium NUMERIC(18,2)            
+ ,@IGSTTaxPremium NUMERIC(18,2)            
+ ,@SGSTTaxPremium NUMERIC(18,2)            
+ ,@UGSTTaxPremium NUMERIC(18,2)            
+ ,@KFCTaxPremium NUMERIC(18,2)          
+ ,@MedicalExtnAmt NUMERIC(18,2)          
+ ,@IsValidABHAID  TINYINT          
+ ,@ISValidABHAAddress TINYINT        
+ ,@ISPreviousPolicyNumberExists TINYINT = 1       
+ ,@previouspolicyStartDate Datetime   
+ ,@prevPolicyInsuredName varchar(1000)  
+ ,@prevPolicyInsuredNamett varchar(1000) 
+ ,@IsLimitTypeExists tinyint
+ ,@IsCDAccountExist tinyint
+ ,@BalanceAmount NUMERIC(18,2)                                 
+ ,@BalanceDays INT 
+ ,@IsBalanceLimitOver tinyint
+ ,@IsIdentificationNumberDuplicate TINYINT
+ ,@IsDuplicatePaymentReferenceNumber TINYINT,
+ @IsCompanyLimitTypeCD tinyint,
+ @IsCompanyLimitTypeCDT tinyint,
+ @IsValidProductCodePP tinyint,
+ @IsValidPaymentReferenceNumber tinyint,
+ @IsValidPaymentCollectedByPartner tinyint,
+ @IsValidInputDateFormat tinyint,
+ @IsValidRelationWithProposer TINYINT
+ DECLARE @ErrorMessage nvarchar(3000)                
+                
+        
+ EXEC usp_GPA_RequestResponseLogDetails_WebAPI @TokenIdOfLogTable, NULL, @Identification_number,'GPA','Proposal Started_Sp','usp_GPA_CheckDataValidationOfProposalInsuranceThruWebAPI',@UserIpAddress               
+            
+ BEGIN                
+ BEGIN TRY              
+      SELECT 
+	  @SystemType                 =  JSON_VALUE(@inputrequestjson, 'strict $.systemType'),
+	  @Company_Branch_Code        =  JSON_VALUE(@inputrequestjson, 'strict $.branchCode'),
+	  @Name_Of_The_Plan           =  JSON_VALUE(@inputrequestjson, 'strict $.planName'),
+	  @Company_dept_Name          =  JSON_VALUE(@inputrequestjson, 'strict $.deptName'),
+	  @UserName                   =  JSON_VALUE(@inputrequestjson, 'strict $.userName'),
+	  @BusinessType			      =  JSON_VALUE(@inputrequestjson, 'strict $.businessType'),
+	  @PreviousPolicyNumber       =  JSON_VALUE(@inputrequestjson, 'strict $.previousPolicyNumber'),
+	  @PreviousPolicyEndDate      =  JSON_VALUE(@inputrequestjson, 'strict $.previousPolicyEndDate'),
+	  @previouspolicyStartDate    =  JSON_VALUE(@inputrequestjson, 'strict $.previousPolicyStartDate'),
+	  @prevPolicyInsuredName      =  JSON_VALUE(@inputrequestjson, 'strict $.previousPolicyInsuredname'),
+	  @MasterPolicyNumber         =  JSON_VALUE(@inputrequestjson, 'strict $.masterPolicyNumber'),
+	  @Policy_Start_Date          =  JSON_VALUE(@inputrequestjson, 'strict $.policyStartDate'),
+      --@Loan_Tenure_End_Date     =  JSON_VALUE(@inputrequestjson, 'strict $.policyStartDate'),
+	  @Customer_Type              =  JSON_VALUE(@inputrequestjson, 'strict $.customerType'),
+	  @Salutation			      =  JSON_VALUE(@inputrequestjson, 'strict $.salutation'),
+	  @Insured_Name               =  JSON_VALUE(@inputrequestjson, 'strict $.insuredDetails.insuredName'),
+	  @Insured_DOB                =  JSON_VALUE(@inputrequestjson, 'strict $.insuredDetails.insuredDOB'),
+      @Insured_Gender             =  JSON_VALUE(@inputrequestjson, 'strict $.insuredDetails.insuredGender'),
+	  @Identification_Number      =  JSON_VALUE(@inputrequestjson, 'strict $.identificationNumber'),
+	  @AddressLine1               =  JSON_VALUE(@inputrequestjson, 'strict $.communicationAddressDetails.addressLine1'),
+	  @AddressLine2               =  JSON_VALUE(@inputrequestjson, 'strict $.communicationAddressDetails.addressLine2'),
+      @State                      =  JSON_VALUE(@inputrequestjson, 'strict $.communicationAddressDetails.state'),
+	  @City                       =  JSON_VALUE(@inputrequestjson, 'strict $.communicationAddressDetails.city'),
+	  @Pincode                    =  JSON_VALUE(@inputrequestjson, 'strict $.communicationAddressDetails.pinCode'),
+	  @EmailID                    =  JSON_VALUE(@inputrequestjson, 'strict $.communicationAddressDetails.emailId'),
+	  @MobileNumber               =  JSON_VALUE(@inputrequestjson, 'strict $.communicationAddressDetails.mobileNumber'),
+	  @Occupation                 =  JSON_VALUE(@inputrequestjson, 'strict $.occupation'),
+	  @Reference_Number           =  JSON_VALUE(@inputrequestjson, 'strict $.referenceNumber'),
+	  @Annual_Income_In_Lacs      =  JSON_VALUE(@inputrequestjson, 'strict $.annualIncomeInLacs'),
+	  @Application_Signed_date    =  JSON_VALUE(@inputrequestjson, 'strict $.applicationSignedDate'),
+	  @Name_of_the_Assignee       =  JSON_VALUE(@inputrequestjson, 'strict $.nameOfTheAssignee'),
+	  @Relationship_of_the_assignee_with_the_Insured=  JSON_VALUE(@inputrequestjson, 'strict $.relationshipOfTheAssigneeWithTheInsured'),
+	  @Registration_Number        =  JSON_VALUE(@inputrequestjson, 'strict $.registrationNumber'),
+	  @Registration_Date          =  JSON_VALUE(@inputrequestjson, 'strict $.registrationDate'),
+	  @Other_Relevent_Information = JSON_VALUE(@inputrequestjson, 'strict $.otherReleventInformation'),
+	  @Sales_Remark               = JSON_VALUE(@inputrequestjson, 'strict $.salesRemark'),
+	  @SumInsured                 = JSON_VALUE(@inputrequestjson, 'strict $.sumInsured'),
+	  @Nominee_Name               = JSON_VALUE(@inputrequestjson, 'strict $.nomineeDetails.nomineeName'),
+	  @Nominee_Gender             = JSON_VALUE(@inputrequestjson, 'strict $.nomineeDetails.nomineeGender'),
+	  @Nominee_DOB                = JSON_VALUE(@inputrequestjson, 'strict $.nomineeDetails.nomineeDateOfBirth'),
+	  @Relationship_with_Proposer = JSON_VALUE(@inputrequestjson, 'strict $.nomineeDetails.relationshipWithProposer'),
+	  @Registered_under_GST       = JSON_VALUE(@inputrequestjson, 'strict $.registeredunderGST'),
+	  @GSTIN                      = JSON_VALUE(@inputrequestjson, 'strict $.gstin'),
+	  @SP_Code                    = JSON_VALUE(@inputrequestjson, 'strict $.spCode'),
+	  @IsABHAAccountExists        = JSON_VALUE(@inputrequestjson, 'strict $.isabhaAccountExists'),
+	  @ABHAAddress                = JSON_VALUE(@inputrequestjson, 'strict $.abhaAddress'),
+	  @ABHAID                     = JSON_VALUE(@inputrequestjson, 'strict $.abhaId'),
+	  @LoanAccountNumber          = JSON_VALUE(@inputrequestjson, 'strict $.loanAccountNumber'),
+	  
+    @Payment_Collected_by_Partner = CASE 
+        WHEN @PolicyType = 'Proposal And Payment' 
+            THEN JSON_VALUE(@inputrequestjson, 'strict $.paymentCollectedByPartner') 
+        ELSE NULL 
+    END,
+    @Payment_Reference_Number = CASE 
+        WHEN @PolicyType = 'Proposal And Payment' 
+            THEN JSON_VALUE(@inputrequestjson, 'strict $.paymentReferenceNumber') 
+        ELSE NULL 
+    END,
+    @Payment_Collected_Date = CASE 
+        WHEN @PolicyType = 'Proposal And Payment' 
+            THEN JSON_VALUE(@inputrequestjson, 'strict $.paymentCollectedDate') 
+        ELSE NULL 
+    END,
+    @InputDateFormat = CASE 
+        WHEN @PolicyType = 'Proposal And Payment' 
+            THEN JSON_VALUE(@inputrequestjson, 'strict $.InputDateFormat') 
+        ELSE NULL 
+    END,
+		@ProductCodeFromInput = CASE 
+	    WHEN @PolicyType = 'Proposal And Payment' 
+            THEN JSON_VALUE(@inputrequestjson, 'strict $.productCode') 
+        ELSE NULL 
+	END;
+
+
+
+            
+  EXEC usp_UpdateLoginDateWebAPI @UserName          
+            
+  DECLARE @WebAPICallId BIGINT            
+           
+  
+  INSERT INTO tbl_GPA_WebAPI_Input_Parameter(            
+ CreatedDate,          
+ Message,          
+ Company_Branch_Code,          
+ Name_Of_The_Plan,          
+ Company_dept_Name,          
+ UserName,          
+ --EncryptedPassword,          
+ BusinessType,          
+ PreviousPolicyNumber,          
+ PreviousPolicyEndDate,          
+ MasterPolicyNumber,          
+ Policy_Start_Date,          
+ Customer_Type,          
+ Salutation,          
+ Insured_Name,          
+ Insured_DOB,        
+ Insured_Gender,          
+ Identification_Number,          
+ AddressLine1,          
+ AddressLine2,          
+ State,          
+ City,          
+ Pincode,          
+ EmailID,          
+ MobileNumber,          
+ Occupation,          
+ Reference_Number,          
+ Annual_Income_In_Lacs,          
+ Application_Signed_date,          
+ Name_of_the_Assignee,          
+ Relationship_of_the_assignee_with_the_Insured,          
+ Registration_Number,          
+ Registration_Date,          
+ Other_Relevent_Information,          
+ Sales_Remark,          
+ SumInsured,          
+ Nominee_Name,          
+ Nominee_Gender,          
+ Nominee_DOB,          
+ Relationship_with_Proposer,          
+ Registered_under_GST,          
+ GSTIN,          
+ SP_Code,          
+ --Loan_Tenure_End_Date,        
+ IsABHAAccountExists,   --ABHA CR                     
+ ABHAAddress,       --ABHA CR                 
+ ABHAID,          --ABHA CR 
+ LoanAccountNumber          
+  )            
+  VALUES            
+  (            
+    GETDATE(),           
+    NULL,           
+    @Company_Branch_Code,          
+    @Name_Of_The_Plan,          
+    @Company_dept_Name,          
+    @UserName,          
+   -- @EncryptedPassword,          
+    @BusinessType,          
+    @PreviousPolicyNumber,          
+    @PreviousPolicyEndDate,          
+    @MasterPolicyNumber,          
+    @Policy_Start_Date,          
+    @Customer_Type,          
+    @Salutation,          
+    @Insured_Name,          
+    @Insured_DOB,          
+    @Insured_Gender,          
+    @Identification_Number,          
+    @AddressLine1,          
+    @AddressLine2,          
+    @State,          
+    @City,          
+    @Pincode,          
+    @EmailID,          
+    @MobileNumber,          
+    @Occupation,          
+    @Reference_Number,          
+    @Annual_Income_In_Lacs,          
+    @Application_Signed_date,          
+    @Name_of_the_Assignee,          
+    @Relationship_of_the_assignee_with_the_Insured,          
+    @Registration_Number,          
+    @Registration_Date,          
+    @Other_Relevent_Information,          
+    @Sales_Remark,          
+    @SumInsured,          
+    @Nominee_Name,          
+    @Nominee_Gender,          
+    @Nominee_DOB,          
+    @Relationship_with_Proposer,          
+    @Registered_under_GST,          
+    @GSTIN,          
+    @SP_Code,          
+  --@Loan_Tenure_End_Date,        
+    @IsABHAAccountExists,--ABHA CR            
+    @ABHAAddress,--ABHA CR            
+    @ABHAID,      --ABHA CR 
+    @LoanAccountNumber            
+  )            
+              
+  SET @WebAPICallId = SCOPE_IDENTITY()            
+                
+  DECLARE @CountCompany INT              
+            
+  SELECT distinct @CountCompany = COUNT(1)            
+   FROM                     
+   dbo.CompanyMaster WITH(NOLOCK)               
+   inner join Company_Department_Master WITH(NOLOCK) on CompanyId = CompanyId_FK                  
+   inner join Vendor_Bas_Mapping_Master WITH(NOLOCK) on Vendor_Bas_ID_PK = CompanyMaster.Bank_ID_fK                  
+   inner join SM_VendorHNIN_Mapping_Master WITH(NOLOCK) on  Vendor_Bas_Mapping_Master.Vendor_Bas_ID_PK= SM_VendorHNIN_Mapping_Master.Vendor_Bas_ID_FK                  
+   WHERE IMD_Ref_No = @Company_Branch_Code                  
+   And CompanyDepartmentName = @Company_Dept_Name                  
+   AND CompanyStatus = 1              
+              
+   IF @CountCompany > 1            
+   BEGIN            
+    SET @CompanyId = 0            
+    SET @BankIDFK = 0            
+   END            
+   ELSE            
+   BEGIN             
+   SELECT distinct @CompanyId = CompanyID,                      
+    @BankIDFK = CompanyMaster.Bank_ID_FK ,            
+    @Bas_Code = CompanyMaster.BAS_Code               
+    FROM                     
+    dbo.CompanyMaster WITH(NOLOCK)               
+    inner join Company_Department_Master WITH(NOLOCK) on CompanyId = CompanyId_FK                  
+    inner join Vendor_Bas_Mapping_Master WITH(NOLOCK) on Vendor_Bas_ID_PK = CompanyMaster.Bank_ID_fK                  
+    inner join SM_VendorHNIN_Mapping_Master WITH(NOLOCK) on  Vendor_Bas_Mapping_Master.Vendor_Bas_ID_PK= SM_VendorHNIN_Mapping_Master.Vendor_Bas_ID_FK                  
+    WHERE IMD_Ref_No = @Company_Branch_Code                  
+    And CompanyDepartmentName  =  @Company_Dept_Name                  
+    AND CompanyStatus = 1              
+   END                  
+                     
+ --CompanyID not exists                 
+                    
+  IF ISNULL(@CompanyId,0) = 0                    
+  BEGIN                    
+   UPDATE tbl_GPA_WebAPI_Input_Parameter SET [Message] =  'You are not authorized for Policy Insurance' WHERE WebAPICallId = @WebAPICallId                 
+                
+                   
+  SELECT
+		'ErrorMessage' AS ReturnStatus,
+		'GA003' AS ErrorCode,
+		@Insured_Name AS InsuredName,
+		@Identification_number AS IdentificationNo
+
+  END        
+   SELECT @ProductCode = ProductCode from dbo.vw_Product_Plan_Mapping WITH(NOLOCK) where PlanName = @Name_of_The_Plan-- AND PlanStatus= 1 AND ProductStatus = 1            
+  SELECT @IsDuplicate =  dbo.fun_GPA_CheckDuplicateIdentificationNumber(@Identification_Number, @CompanyID, @ProductCode)  
+  --select @Identification_Number, @CompanyID,@ProductCode
+  IF Upper(@SystemType) = 'WEBAPI' -- Checking Duplicacy
+	begin
+		--Set @IsIdentificationNumberMANDatory = Case When LEN(ISNULL(@Identification_Number,'')) > 0 then 1 else 0 end ;
+		Set @IsIdentificationNumberDuplicate = Case When LEN(ISNULL(@Identification_Number,'')) > 0 
+		then  dbo.fun_GPA_NET_CheckDuplicateIdentificationNumber(@Identification_Number, @CompanyID,'2914') else 1 end ;
+	End
+	Else
+	Begin 
+		--Set @IsIdentificationNumberMANDatory = Case When LEN(ISNULL(@Identification_Number,'')) > 0 then 0 else 1 end
+		Set @IsIdentificationNumberDuplicate = 1
+	End
+
+	--select @SystemType,@IsIdentificationNumberDuplicate
+IF @IsIdentificationNumberDuplicate = 1
+BEGIN                   
+     
+             
+          
+ SELECT @PlanID_FK= (SELECT PlanID FROM PlanMaster WITH(NOLOCK) WHERE PlanName = @Name_of_The_Plan AND IsActive = 1)              
+          
+ SELECT @ProductID_FK = ProductId, @PlanID_FK = PlanID from dbo.vw_Product_Plan_Mapping WITH(NOLOCK) where PlanName = @Name_of_The_Plan            
+ SELECT @ProductCode = ProductCode from dbo.vw_Product_Plan_Mapping WITH(NOLOCK) where PlanName = @Name_of_The_Plan AND PlanStatus= 1 AND ProductStatus = 1            
+ SELECT TOP 1 @CompanyDepartmentID_FK = CompanyDepartmentID_FK FROM dbo.CompanyBranch_Department_Mapping WITH(NOLOCK) WHERE Bank_Branch_ID_FK = ISNULL((SELECT Bank_Branch_ID_PK FROM dbo.vw_RGICLOffice_CompanyBranches where Bank_Branch_Code = @Company_Branch_Code AND CompanyId = @CompanyId) ,0) AND CompanyId_FK = @CompanyId AND IsActive = 1                                
+ SELECT @SM_Code = Employee_Code FROM vw_RGICLOffice_CompanyBranches WITH(NOLOCK) where Bank_Branch_Code = @Company_Branch_Code AND CompanyId = @CompanyId                                         
+ SELECT @Intermediatory_Code = Agent_or_Broker_Code FROM vw_RGICLOffice_CompanyBranches WITH(NOLOCK) where Bank_Branch_Code = @Company_Branch_Code AND CompanyId = @CompanyId          
+          
+ DECLARE @PolicyEndTenure datetime            
+ DECLARE @PolicyEndFinal datetime           
+ DECLARE @Tenure INT = 1          
+           
+  SELECT @PolicyEndTenure= DATEADD(year, @Tenure, @Policy_Start_Date)             
+  SELECT @PolicyEndFinal=DATEADD(DD, -1, @PolicyEndTenure)              
+  SET @Policy_End_Date = @PolicyEndFinal               
+                     
+  SELECT  @UserID = UserID,                    
+    @UserRole = RoleName                      
+  From dbo.vw_Users WITH(NOLOCK) WHERE UserName = @UserName            
+            
+  SET @PolicyIssueDate = Convert(DATETIME, convert(NVARCHAR(11),getDate(),106) + ' 00:00:00:000')               
+            
+    IF(Upper(@BusinessType) = 'RENEWAL')      
+    BEGIN      
+      SET @ISPreviousPolicyNumberExists = [dbo].[fun_GPA_CheckPreviousPolicyNumber] (@PreviousPolicyNumber)       
+      
+      IF(@ISPreviousPolicyNumberExists = 0)      
+      BEGIN      
+        UPDATE tbl_GPA_WebAPI_Input_Parameter SET [Message] = 'Previous PolicyNumber is invalid' WHERE WebAPICallId = @WebAPICallId                        
+                  
+		
+		SELECT
+		'ErrorMessage' AS ReturnStatus,
+		'GD099' AS ErrorCode,
+		@Insured_Name AS InsuredName,
+		@Identification_number AS IdentificationNo,
+		@CertificateNumber AS CertificateNumber
+
+                  
+       -- SET @StartID  = @StartID + 1;                    
+        --CONTINUE;                            
+      END       
+      
+      IF (@ISPreviousPolicyNumberExists = 1)          
+      BEGIN          
+        DECLARE @PolicyStartDateRR DATETIME, @PolicyEndDateRR DATETIME          
+        SELECT @PolicyStartDateRR = Policy_Start_Date, @PolicyEndDateRR = Policy_End_Date , @prevPolicyInsuredNamett = InsuredName FROM PAPolicyIssuance WITH (NOLOCK) WHERE Certificate_Number= @PreviousPolicyNumber          
+             
+        IF(@PreviousPolicyEndDate != @PolicyEndDateRR)      
+        BEGIN      
+      UPDATE tbl_GPA_WebAPI_Input_Parameter SET [Message] = 'Incorrect Prev Policy End date' WHERE WebAPICallId = @WebAPICallId                        
+                        
+	  SELECT
+		'ErrorMessage' AS ReturnStatus,
+		'GD100' AS ErrorCode,
+		@Insured_Name AS InsuredName,
+		@Identification_number AS IdentificationNo,
+		@CertificateNumber AS CertificateNumber
+		   
+
+     -- SET @StartID  = @StartID + 1;                    
+      --CONTINUE;       
+        end      
+      
+        IF(@Policy_Start_Date < @PolicyEndDateRR)      
+        BEGIN      
+        UPDATE tbl_GPA_WebAPI_Input_Parameter SET [Message] = 'Policy Start Date should not be less than Previous Policy End Date of Previous Policy number' WHERE WebAPICallId = @WebAPICallId                        
+                         
+	   SELECT
+		'ErrorMessage' AS ReturnStatus,
+		'GD101' AS ErrorCode,
+		@Insured_Name AS InsuredName,
+		@Identification_number AS IdentificationNo,
+		@CertificateNumber AS CertificateNumber
+      
+        END      
+    
+  IF(@prevPolicyInsuredName != @prevPolicyInsuredNamett)      
+   BEGIN      
+   UPDATE tbl_GPA_WebAPI_Input_Parameter SET [Message] = 'Prev Policy Insured name is incorrect' WHERE WebAPICallId = @WebAPICallId                        
+                  
+	SELECT
+		'ErrorMessage' AS ReturnStatus,
+		'GD103' AS ErrorCode,
+		@Insured_Name AS InsuredName,
+		@Identification_number AS IdentificationNo,
+		@CertificateNumber AS CertificateNumber  
+
+   -- SET @StartID  = @StartID + 1;                    
+    --CONTINUE;       
+   END      
+    IF(@Policy_Start_Date != @previouspolicyStartDate)      
+   BEGIN      
+   UPDATE tbl_GPA_WebAPI_Input_Parameter SET [Message] = 'Prev Policy Start date is incorrect' WHERE WebAPICallId = @WebAPICallId                        
+                  
+    SELECT
+   'ErrorMessage' AS ReturnStatus,
+   'GD104' AS ErrorCode,
+   @Insured_Name AS InsuredName,
+   @Identification_number AS IdentificationNo,
+   @CertificateNumber AS CertificateNumber  
+      
+   END      
+          
+      END        
+    END         
+	
+
+	SELECT @SAPCode = ISNULL(SAPCode,0),                                
+    @LimitType = ISNULL(LimitType,0) ,
+	 @BalanceAmount=isnull(BalanceAmount,0),            
+   @BalanceDays=isnull(BalanceDays,0)     
+     FROM                                 
+   CompanyMaster WITH(NOLOCK)                               
+     WHERE                                
+   CompanyID = @CompanyID and CompanyStatus = 1     ;
+
+ IF @PolicyType = 'Policy' and @SystemType = 'webapi'
+ Begin
+		IF ISNULL(@LimitType,'') = ''       
+		Begin 
+			Set @IsLimitTypeExists = 0;
+		End 
+		Else
+		Begin
+			Set	@IsLimitTypeExists = 1;
+			IF (ISNULL(@SAPCode,'') = '' AND @LimitType=2)   
+			Begin
+				Set @IsCDAccountExist = 0;
+			End 
+			Else 
+			Begin
+			 set @IsCDAccountExist = 1;
+			End 
+		End
+ End
+ Else 
+ Begin
+		set @IsLimitTypeExists = 1;
+		set @IsCDAccountExist = 1;
+ End 
+
+ IF @PolicyType = 'Policy' and @SystemType = 'webapi'
+  Begin
+	 Set @IsCompanyLimitTypeCD= Case When	@LimitType = 2 then 1 else 0 end
+	 Set @IsCompanyLimitTypeCDT = 1
+  End
+  Else IF @PolicyType = 'Proposal' and @SystemType = 'webapi'
+  Begin
+	 Set @IsCompanyLimitTypeCDT= Case When	@LimitType = 3 then 1 else 0 end
+	 Set @IsCompanyLimitTypeCD = 1
+  End
+  Else 
+  Begin
+		Set @IsCompanyLimitTypeCD = 1
+		Set @IsCompanyLimitTypeCDT = 1
+  End
+           
+  SELECT                    
+  --Plan Name Exist in DB or not                    
+  @NameofPlanExist = dbo.fun_CheckPlanName (@Name_of_The_Plan),            
+          
+  @DeptNameExist = dbo.fun_CheckDeptName(@Company_Dept_Name, @CompanyId),           
+             
+  @IsGPAPlan = dbo.fun_PA_CheckPolicyTypeIsGPA(@Name_of_The_Plan),             
+          
+  @BranchCodeExist = dbo.fun_CheckBranchCode (@Company_Branch_Code,@CompanyId),              
+                         
+  @UserProductPlanMappingExist = CASE WHEN @NameofPlanExist = 1 THEN dbo.fun_CheckUserProductPlanMappingExist(@Name_of_The_Plan,@UserID,@UserRole,@CompanyId) ELSE 2 END,             
+            
+  @UserExcelBranchUploadRight = CASE WHEN @BranchCodeExist = 1 THEN dbo.fun_CheckUserExcelBranchUploadRight(@Company_Branch_Code,@UserID,@UserRole,@CompanyId) ELSE 2 END,            
+          
+  @CheckMasterPolicyAndPlan = CASE WHEN @NameofPlanExist = 1 THEN dbo.fun_PA_CheckMasterPolicyNumberAndPlan(@Name_of_The_Plan, @Policy_Start_Date, @CompanyId, @MasterPolicyNumber) ELSE 2 END,            
+          
+  @PlanCompanyMappingExist = CASE WHEN @NameofPlanExist = 1 THEN dbo.fun_CheckPlanCompanyMapping (@Name_of_The_Plan,@CompanyId) ELSE 2 END,            
+    @PlanCompanyMappingExist=1,      
+  @CompanyBranchMappingExist = CASE WHEN @BranchCodeExist = 1 THEN dbo.fun_CheckCompanyBranchMapping (@Company_Branch_Code,@CompanyId) ELSE 2 END,             
+                             
+  @BranchDeptMappingExist = CASE WHEN @BranchCodeExist = 1 and @DeptNameExist = 1 THEN dbo.fun_CheckDeptBranchMapping (@Company_Dept_Name,@Company_Branch_Code,@CompanyId) ELSE 2 END,          
+            
+  @ExcelUserDeptUploadRight = CASE WHEN @BranchCodeExist = 1 and @DeptNameExist = 1 THEN dbo.fun_CheckExcelUserDeptUploadRight(@Company_Branch_Code,@Company_Dept_Name,@UserID,@UserRole,@CompanyId) ELSE 2 END ,                           
+            
+  --@IsIssueDateValidation = dbo.fun_CheckPolicyIssueDateValidationWebAPI (@PolicyIssueDate, @Policy_Start_Date , @CompanyId),          
+          
+  @IsIssueDateValidation = dbo.fun_IsValidDaysConfiguration (@ProductCode, @CompanyId,  @Policy_Start_Date, 'webapi'), --ABHA CR                      
+          
+  --@StateExistinMOM = CASE WHEN dbo.fun_PA_CheckValidState(@State) = 1 THEN 1 ELSE 0 END,            
+            
+  @IsValidCity = dbo.fun_PA_CheckValidCity(@State,@City),           
+          
+  @IsValidPinCode = dbo.fun_CheckValidPincodeFromStateCity(@Pincode,@State,@City),          
+        
+  @StateExistinMOM  = dbo.fun_CheckValidStateAndPinCode (@State, @Pincode), --ABHA CR        
+            
+  @IsValidABHAID = [dbo].[UDF_Validate_ABHAID_GPA_WebAPI] (@ABHAID, @BusinessType, @ProductCode),          
+        
+  @ISValidABHAAddress = [dbo].[UDF_Validate_ABHAADDRESS_GPA](@ABHAAddress,@BusinessType, @ProductCode ),        
+  @IsValid_MobileNumber = dbo.fun_ValidateMobileNo(@MobileNumber),            
+            
+  @IsValid_EmailID  = dbo.fun_ValidEmailAddress(@EmailID),              
+            
+  @IsvalidGSTIN = CASE             
+  WHEN UPPER(@Registered_under_GST) = 'YES' and (isnull(ltrim(rtrim(@GSTIN)),'') <> '' OR (isnull(ltrim(rtrim(@GSTIN)),'0') <> '0'))  And (dbo.FUN_IsvalidGSTIN_No (@GSTIN) = 1) then 1            
+  WHEN UPPER(@Registered_under_GST) = 'YES' and (isnull(ltrim(rtrim(@GSTIN)),'') = ''OR (isnull(ltrim(rtrim(@GSTIN)),'0') = '0')) then 0            
+  WHEN UPPER(@Registered_under_GST) = 'NO' and (isnull(ltrim(rtrim(@GSTIN)),'') = '' OR (isnull(ltrim(rtrim(@GSTIN)),'0') = '0'))then 1            
+  WHEN UPPER(@Registered_under_GST) = 'NO' and (isnull(ltrim(rtrim(@GSTIN)),'') <> '' OR (isnull(ltrim(rtrim(@GSTIN)),'0') <> '0')) then 0             
+  ELSE 0            
+  END,           
+          
+  @ISvalidInsured_DOB = dbo.fun_CheckUploadDataDOBDateValidation(@Policy_Start_Date, @Insured_DOB),          
+            
+  @IsValidAgeCheck = dbo.fun_IsValidCheckAgeValidationWebAPI(@Name_Of_The_Plan,@Insured_DOB, @Policy_Start_Date),          
+          
+  @IsValidRegistration_Number = CASE WHEN dbo.fun_PA_CheckRegistrationNumberMandatory(@Name_Of_The_Plan,@Policy_Start_Date,@CompanyId) = 1 THEN CASE WHEN (LEN(RTRIM(LTRIM(ISNULL(@Registration_Number, '')))) > 0) THEN 1 ELSE 0 END ELSE 1 END,          
+          
+  @IsValidRegistration_Date = CASE WHEN dbo.fun_PA_CheckRegistrationDateMandatory(@Name_Of_The_Plan,@Policy_Start_Date,@CompanyId) = 1 THEN CASE WHEN (LEN(RTRIM(LTRIM(ISNULL(@Registration_Date, '')))) > 0) THEN 1 ELSE 0 END ELSE 1 END,          
+          
+  @IsValidSumInsured = CASE WHEN (SELECT DISTINCT RatingType FROM PAPremiumMaster AS A WITH(NOLOCK) inner join             
+     PlanMaster AS B WITH(NOLOCK) ON A.PlanId_FK = B.PlanID  inner join             
+     Date_Range_Master AS DRM  WITH(NOLOCK)          
+     on DRM.DateRangeID = A.DateRangeID_FK           
+  AND A.PlanID_FK = @PlanID_FK           
+  AND (@Policy_Start_Date between DRM.FromDate and DRM.ToDate)             
+     AND A.IsActive = 1           
+  AND B.IsActive = 1          
+  AND DRM.IsActive = 1            
+     )='User SumInsured' THEN CASE WHEN ISNULL(@SumInsured,0) <= 0 THEN 0 ELSE 1 END ELSE 1 END,          
+          
+ @IsValidSPCode = CASE WHEN DBO.fun_Check_Is_SPCode_Mandate(@CompanyId) = 1 and LEN(ISNULL(@SP_Code,''))=0 Then 0 ELSE 1 END,          
+          
+ @IsValidServiceTaxDate = dbo.[fun_CheckIsValidServiceTaxDate] (@Policy_Start_Date),          
+          
+ @IsValidSalutation=dbo.fun_IsCheckValidSalutation(@Salutation),          
+          
+    @IsValidGenderbySalutation= dbo.fun_LT_CheckValidGenderBySalutation_from_Master(@Salutation,@Insured_Gender),          
+          
+ @IsValidNomineeGender= dbo.fun_LT_CheckValidGenderBySalutation_from_Master('Dr.',@Nominee_Gender),          
+          
+ @IsValidCustomertype= dbo.fun_CheckValidSalutation_from_Master(@Customer_Type,@Salutation),
+
+ 
+ @IsValidRelationWithProposer = dbo.fun_CheckValidRelationWithProposer(@Relationship_with_Proposer),
+
+ 
+@IsValidProductCodePP =
+    CASE 
+        -- 1. PolicyType matches but ProductCode is NULL or empty
+        WHEN @PolicyType = 'Proposal And Payment'
+             AND ( @ProductCodeFromInput IS NULL 
+                   OR LTRIM(RTRIM(@ProductCodeFromInput)) = '' )
+            THEN 0
+
+        -- 2. ProductCode is present but not equal to '2914'
+        WHEN @PolicyType = 'Proposal And Payment'
+             AND @ProductCodeFromInput <> '2914'
+            THEN 2
+
+        -- 3. Everything satisfied
+        WHEN @PolicyType = 'Proposal And Payment'
+             AND @ProductCodeFromInput = '2914'
+            THEN 1
+			 WHEN @PolicyType in ('Policy','Proposal')
+		THEN 1 
+
+        -- For other PolicyTypes (if needed)
+        ELSE NULL
+    END,
+
+
+ @isValidPaymentReferenceNumber =
+    CASE
+        -- 1. Mandatory check
+        WHEN @PolicyType = 'Proposal And Payment'
+             AND ( @Payment_Reference_Number IS NULL
+                   OR LTRIM(RTRIM(@Payment_Reference_Number)) = '' )
+            THEN 0  -- Mandatory missing
+
+        -- 3. Zero or negative check
+        WHEN @PolicyType = 'Proposal And Payment'
+             AND TRY_CONVERT(DECIMAL(18,2), @Payment_Reference_Number) <= 0
+            THEN 2  -- Zero or negative
+
+        -- 4. Valid case
+        WHEN @PolicyType = 'Proposal And Payment'
+             AND TRY_CONVERT(DECIMAL(18,2), @Payment_Reference_Number) > 0
+            THEN 1  -- Valid
+		 WHEN @PolicyType in ('Policy','Proposal')
+		THEN 1 
+
+        ELSE 1
+    END,
+
+	
+ @IsValidPaymentCollectedByPartner =
+    CASE
+        -- 1. Mandatory check
+        WHEN @PolicyType = 'Proposal And Payment'
+             AND ( @Payment_Collected_by_Partner IS NULL
+                   OR LTRIM(RTRIM(@Payment_Collected_by_Partner)) = '' )
+            THEN 0  -- Mandatory missing
+
+        -- 2. Non-numeric check
+        WHEN @PolicyType = 'Proposal And Payment'
+             AND TRY_CONVERT(DECIMAL(18,2), @Payment_Collected_by_Partner) IS NULL
+            THEN 2  -- Not numeric
+
+        -- 3. Zero or negative check
+        WHEN @PolicyType = 'Proposal And Payment'
+             AND TRY_CONVERT(DECIMAL(18,2), @Payment_Collected_by_Partner) <= 0
+            THEN 3  -- Zero or negative
+
+        -- 4. Valid case
+        WHEN @PolicyType = 'Proposal And Payment'
+             AND TRY_CONVERT(DECIMAL(18,2), @Payment_Collected_by_Partner) > 0
+            THEN 1  -- Valid
+
+		 WHEN @PolicyType in ('Policy','Proposal')
+		THEN 1
+
+        ELSE NULL
+    END,
+
+	
+ @IsValidInputDateFormat =
+    CASE
+        -- 1. Mandatory check
+        WHEN @PolicyType = 'Proposal And Payment'
+             AND ( @InputDateFormat IS NULL
+                   OR LTRIM(RTRIM(@InputDateFormat)) = '' )
+            THEN 0   -- Mandatory missing (GM040)
+
+        -- 2. Allowed value check
+        WHEN @PolicyType = 'Proposal And Payment'
+             AND UPPER(LTRIM(RTRIM(@InputDateFormat))) NOT IN ('EPOCH', 'OTHER')
+            THEN 2   -- Invalid value (GD069)
+
+        -- 3. Valid case
+        WHEN @PolicyType = 'Proposal And Payment'
+             AND UPPER(LTRIM(RTRIM(@InputDateFormat))) IN ('EPOCH', 'OTHER')
+            THEN 1   -- Valid
+
+        WHEN @PolicyType in ('Policy','Proposal')
+		THEN 1
+    END;
+
+
+ 
+ IF @SystemType='webapi' AND @PolicyType='Proposal And Payment'
+  BEGIN
+   SET  @IsDuplicatePaymentReferenceNumber = dbo.fun_CheckDuplicatePaymentReferenceNumber (@Payment_Reference_Number)
+   END
+   ELSE
+   BEGIN
+   SET @IsDuplicatePaymentReferenceNumber = 0
+ END
+
+          
+ --@IsValidLoanTenureEndDate = [dbo].[fun_ValidateLoanTenureEndDate](@Policy_Start_Date, @Policy_End_Date, @Loan_Tenure_End_Date)          
+            
+   --select @PlanCompanyMappingExist      
+           
+  IF (@NameofPlanExist = 1 AND @DeptNameExist = 1 AND @IsGPAPlan = 1 AND @BranchCodeExist = 1 AND @UserProductPlanMappingExist = 1 AND @UserExcelBranchUploadRight = 1          
+ AND @CheckMasterPolicyAndPlan = 1 AND @PlanCompanyMappingExist = 1 AND @CompanyBranchMappingExist = 1 AND @BranchDeptMappingExist = 1 AND @ExcelUserDeptUploadRight = 1           
+ AND @IsIssueDateValidation = 1 AND @StateExistinMOM = 1 AND @IsValidCity = 1 AND @IsValidPinCode = 1 AND @IsValid_MobileNumber = 1 AND @IsValid_EmailID = 1           
+ AND @IsvalidGSTIN = 1 AND @ISvalidInsured_DOB = 1 AND @IsValidAgeCheck = 1 AND @IsValidRegistration_Number = 1 AND @IsValidRegistration_Date = 1           
+ AND @IsValidSumInsured = 1 AND @IsValidSPCode = 1 AND @IsValidServiceTaxDate = 1 AND @IsValidSalutation = 1 AND @IsValidGenderbySalutation = 1           
+ AND @IsValidNomineeGender = 1 AND @IsValidCustomertype = 1 --AND @IsValidLoanTenureEndDate = 1   
+ AND @IsValidABHAID=1 AND @ISValidABHAAddress = 1 AND @IsLimitTypeExists =1 AND @IsCDAccountExist = 1  AND @IsDuplicatePaymentReferenceNumber = 0
+ AND @IsCompanyLimitTypeCD = 1 AND @IsCompanyLimitTypeCDT = 1 AND @IsValidProductCodePP =1 AND @isValidPaymentReferenceNumber=1 AND @IsValidPaymentCollectedByPartner=1
+ AND @IsValidInputDateFormat = 1 AND @IsValidRelationWithProposer =1
+ )          
+            
+  BEGIN            
+          
+  BEGIN            
+     SELECT @ReceiptNumber = ReceiptNo FROM stampdutymaster WITH(NOLOCK) WHERE @PolicyIssueDate between FromDate and ToDate                    
+                    
+     IF @ReceiptNumber IS NULL AND LEN(@ReceiptNumber) = 0                    
+     BEGIN                    
+   UPDATE tbl_GPA_WebAPI_Input_Parameter SET [Message] = 'Stamp Duty Detail does not exist. Please Contact to Administrator.' WHERE WebAPICallId = @WebAPICallId                    
+              
+    SELECT
+		'ErrorMessage' AS ReturnStatus,
+		'GS002' AS ErrorCode,
+		@Insured_Name AS InsuredName,
+		@Identification_number AS IdentificationNo,
+		@CertificateNumber AS CertificateNumber
+              
+     END               
+            
+     SELECT   TOP 1                     
+   @RGICLBranchId = Branch_ID_PK,                    
+   @RGICLBranchCode = Branch_Code,                    
+   @CompanyBranchID = Bank_Branch_ID_PK                     
+     FROM                     
+   vw_RGICLOffice_CompanyBranches WITH(NOLOCK)                    
+     WHERE                     
+   Bank_Branch_Code = @Company_Branch_Code                    
+   and Bank_ID_PK = @BankIDFK -- Added due to error faced of Returning Multiple Bank_Branch_Code .. Dated 30-Mar-2010 ..                    
+                    
+     IF ISNULL(@RGICLBranchCode,'') = ''                    
+     BEGIN                    
+                
+   UPDATE tbl_GPA_WebAPI_Input_Parameter SET [Message] = 'Intermediatory Branch does not map with Organization Branch.' WHERE WebAPICallId = @WebAPICallId                    
+              
+   
+    SELECT
+		'ErrorMessage' AS ReturnStatus,
+		'GS005' AS ErrorCode,
+		@Insured_Name AS InsuredName,
+		@Identification_number AS IdentificationNo,
+		@CertificateNumber AS CertificateNumber
+  -- SET @StartID  = @StartID + 1;                
+   --CONTINUE;                        
+     END                    
+                    
+                     
+                    
+     PRINT 'PLan oD'                    
+     PRINT @PlanID_FK      
+	 
+	  Declare @PremiumCalcTokenId varchar(20) ;
+ EXEC usp_GPA_CalculatePremiumRateWebAPI_migr @Name_Of_The_Plan, @Company_Branch_Code,@DeptNameExist,
+ @BusinessType,@Policy_Start_Date,@State,@SumInsured,@PremiumCalcTokenId Output
+
+ SELECT 
+ @BasicPremium     = BasicPremium,
+ @TaxPercentage    = TaxPercentage,
+ @TaxPremium       = TaxPremium,
+ @NetPremiumRate   = TotalPremium,
+ @CGSTTaxPercentage= CGSTTaxPercentage,
+ @IGSTTaxPercentage= IGSTTaxPercentage,
+ @SGSTTaxPercentage= SGSTTaxPercentage,
+ @UGSTTaxPercentage= UGSTTaxPercentage,
+ @KFCTaxPercentage = KFCTaxPercentage,
+ @CGSTTaxPremium   = CGSTTaxPremium,
+ @IGSTTaxPremium   = IGSTTaxPremium,
+ @SGSTTaxPremium   = SGSTTaxPremium,
+ @UGSTTaxPremium   =UGSTTaxPremium,         
+ @KFCTaxPremium    =KFCTaxPremium         
+ --@MedicalExtnAmt   =MedicalExtnAmt
+
+ FROM tbl_GPA_PremiumCalculationAPIResponseOutput
+ WHERE TokenId = @PremiumCalcTokenId
+
+
+       
+            
+            
+   IF ISNULL(@NetPremiumRate,0) = 0                    
+     BEGIN                    
+   --SELECT 'ErrorMessage' AS ReturnStatus,'Premium Rate does not exist for entered Plan.' AS ReturnMessage,'' As AlertEmailID,'ES007' as ErrorCode                    
+   -- Comment Below Code after Testing                    
+   UPDATE tbl_GPA_WebAPI_Input_Parameter SET [Message] = 'Premium Rate does not exist for entered Plan.' WHERE WebAPICallId = @WebAPICallId                   
+               
+     
+    SELECT
+		'ErrorOnPremiumCalc' AS ReturnStatus,
+		'GS006' AS ErrorCode,
+		@Insured_Name AS InsuredName,
+		@Identification_number AS IdentificationNo,
+		@CertificateNumber AS CertificateNumber
+	 
+
+  -- SET @StartID  = @StartID + 1;                
+   --CONTINUE;                         
+     END          
+	 
+	 IF @PolicyType = 'Policy' and @SystemType = 'webapi'
+ Begin
+		IF ((@LimitType=3 and @BalanceAmount>=@NetPremiumRate + 1000 and @BalanceDays >= 0) or (@LimitType=2) or @LimitType=1)      
+		Begin 
+			Set @IsBalanceLimitOver = 1;
+		End
+		Else 
+		Begin
+				Set @IsBalanceLimitOver = 0;
+		End 
+ End
+ Else 
+ Begin
+		set @IsBalanceLimitOver = 1;
+ End 
+       set @IsBalanceLimitOver=1               
+          
+
+	DECLARE @ProposalNumberTable TABLE (
+			ProposalNumber NVARCHAR(20) );
+			INSERT INTO @ProposalNumberTable
+			EXEC [dbo].[usp_XPAS_GenerateProposalNumber]
+			SELECT @ProposalNumber = ProposalNumber FROM @ProposalNumberTable;
+            
+    EXEC usp_GPA_RequestResponseLogDetails_WebAPI @TokenIdOfLogTable, @Insured_Name, @Identification_number,'GPA','Proposal_Number_Created','usp_GPA_CheckDataValidationOfProposalInsuranceThruWebAPI',@UserIpAddress               
+            
+            
+
+ -- Transaction ID Logic START          
+ IF ((@PolicyType='Proposal' OR @PolicyType='Proposal And Payment')) and @SystemType in ('webapi','singlescreen')
+ Begin         
+
+ IF OBJECT_ID('tempdb..#tbl_TransactionId') IS NOT NULL DROP TABLE #tbl_TransactionId;          
+ Create Table #tbl_TransactionId          
+ (          
+  TransactionId VARCHAR(100)          
+ )          
+ INSERT INTO #tbl_TransactionId          
+ (          
+  TransactionId          
+ )          
+ EXEC usp_GPA_InsertBundlePolicy_Migr @companyid, @CertificateNumber, @UserID, 0, @Policy_Start_Date,          
+ @Insured_Name, @NetPremiumRate, @MobileNumber, @EmailID, @ProposalNumber,@ProductCode        
+          
+ DECLARE @TransactionId VARCHAR(100)          
+ SELECT @TransactionId = Transactionid FROM #tbl_TransactionId          
+          
+ END          
+          
+   DECLARE @PolicyActualIssueDate Datetime             
+   SET @PolicyActualIssueDate =  CONVERT(DATETIME,CONVERT(NVARCHAR,GETDATE(),106) + ' 00:00:00:000')             
+   INSERT INTO PAPolicyIssuance          
+   (            
+  MasterPolicy_Number,          
+  Certificate_Number,          
+  ProductID_FK,          
+  ProductCode,          
+  CompanyID_FK,          
+  ProposalNumber,          
+  ReferenceNumber,          
+  Company_Branch_ID,          
+  Company_Branch_Code,          
+  CompanyDepartmentID_FK,          
+  InsuredName,          
+  Gender,          
+  DOB,          
+  IdentificationNumber,          
+  Addressline1,          
+  Addressline2,          
+  State,          
+  City_Name,          
+  Pin_Code,          
+  EMail_Id,          
+  Telephone_No,          
+  Occupation,          
+  AnnualIncome,          
+  PlanID_FK,          
+  Name_of_the_Plan,          
+  Policy_Start_Date,          
+  Policy_End_Date,          
+  AgeInMonths,          
+  Application_Signed_Date,          
+  Name_of_the_Assignee,          
+  Relationship_of_the_assignee_with_the_Insured,          
+  RegistrationNumber,          
+  RegistrationDate,          
+  Other_Relevent_Information,          
+  Sales_Remark,          
+  Basic_Premium,          
+  Service_Tax,          
+  EducationCessAmount,          
+  HigherEducationCessAmount,          
+  Surcharge,          
+  Total_Premium,          
+  BusinessType,          
+  DataUploadedBy,          
+  DataUploadDate,          
+  PolicyIssueBy,          
+  PolicyIssueDate,          
+  IsErrorInUploding,          
+  UplodingErrorCorrectedBy,          
+  UplodingErrorCorrectionDate,          
+  IsCancelled,          
+  CancellationReason,          
+  CancelledBy,          
+  CancellationDate,          
+  SM_Code,          
+  Intermediatory_Code,          
+  BAS_Code,          
+  RGICLBranchCode,          
+  RGICLBranchID,          
+  UserID,          
+  UploadFileName,          
+  SystemFileName,          
+  DataUploadedByUserName,          
+  DataFilePath,          
+  PolicyGenratedFlag,          
+  PaymentID,          
+  IsPaymentSendByCompany,          
+  IsPaymentReceiveByRGICL,          
+  CreatedDate,          
+  CreatedBy,          
+  ModifiedDate,          
+  ModifiedBy,          
+  DeletedDate,          
+  DeletedBy,          
+  IsPrinted,          
+  PolicyType,          
+  StampDutyAmount,          
+  IsTransferToICM,          
+  IsErrorWhileTransferToICM,          
+  TransferInICMonDate,          
+  TransactionIDofICM,          
+  UploadFormatType,          
+  MailScheduleToInsured,          
+  MailScheduleToInsuredonDate,          
+  UWApprovedIRDACommissionRate,          
+  SumInsured,          
+  MedicalExtnValue,          
+  SwachhaBharatCessAmount,          
+  KrishiKalyanCessAmount,          
+  Policy_StartTime,          
+  Policy_EndTime,          
+  PreviousPolicyNumber,          
+  PreviousPolicyEndDate,          
+  Salutation,          
+  CustomerType,          
+  Nominee_Name,          
+  Nominee_Gender,          
+  Nominee_Date_of_Birth,          
+  Relationship_with_Proposer,          
+  Registered_under_GST,          
+  GSTIN,          
+  SPCode,          
+  Dealer_State,          
+  --Loan_Tenure_End_Date,        
+  IsABHAAccountExists, --ABHA CR              
+  ABHAAddress,  --ABHA CR                      
+  ABHAID,   --ABHA CR    
+  IPAddress,
+  LoanAccountNumber
+ -- TransactionID
+   )            
+   VALUES            
+   (            
+  @MasterPolicyNumber,          
+  @CertificateNumber,          
+  @ProductID_FK,          
+  @ProductCode,          
+  @CompanyId,          
+  @ProposalNumber,          
+  @Reference_Number,          
+  @CompanyBranchID,          
+  @Company_Branch_Code,          
+  @CompanyDepartmentID_FK,          
+  @Insured_Name,          
+  @Insured_Gender,          
+  @Insured_DOB,          
+  @Identification_Number,          
+  @AddressLine1,          
+  @AddressLine2,          
+  @State,          
+  @City,          
+  @Pincode,          
+  @EmailID,          
+  @MobileNumber,          
+  @Occupation,          
+  @Annual_Income_In_Lacs,          
+  @PlanID_FK,          
+  @Name_Of_The_Plan,          
+  @Policy_Start_Date,          
+  @Policy_End_Date,          
+  NULL,          
+  @Application_Signed_date,          
+  @Name_of_the_Assignee,          
+  @Relationship_of_the_assignee_with_the_Insured,          
+  @Registration_Number,          
+  @Registration_Date,          
+  @Other_Relevent_Information,          
+  @Sales_Remark,          
+  @BasicPremium,          
+  @ServiceTax,          
+  NULL,          
+  NULL,          
+  NULL,          
+  @NetPremiumRate,          
+  @BusinessType,          
+  @UserID,          
+  GETDATE(),          
+  @UserID,          
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  @SM_Code,          
+  @Intermediatory_Code,          
+  @Bas_Code,          
+  @RGICLBranchCode,          
+  @RGICLBranchId,          
+  @UserID,          
+  NULL,          
+  NULL,          
+  CASE WHEN @PolicyType = 'Policy' THEN 'GPA Policy Creation Web API' 
+  WHEN  @PolicyType = 'Proposal' THEN 'GPA Proposal Creation Web API'
+  WHEN  @PolicyType = 'Proposal And Payment' THEN 'GPA Proposal And Payment Web API'
+  END,     
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  GETDATE(),          
+  @UserID,          
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  @SumInsured,          
+  @MedicalExtnAmt,          
+  NULL,          
+  NULL,          
+  NULL,          
+  NULL,          
+  @PreviousPolicyNumber,          
+  @PreviousPolicyEndDate,          
+  @Salutation,          
+  @Customer_Type,          
+  @Nominee_Name,          
+  @Nominee_Gender,          
+  @Nominee_DOB,          
+  @Relationship_with_Proposer,          
+  @Registered_under_GST,          
+  @GSTIN,          
+  @SP_Code,          
+  NULL,          
+  --@Loan_Tenure_End_Date,        
+  @IsABHAAccountExists, --ABHA CR                  
+  @ABHAAddress,  --ABHA CR                      
+  @ABHAID, --ABHA CR     
+  @UserIpAddress,
+  @LoanAccountNumber
+  --@TransactionId
+   )          
+
+  Declare @PolicyIssueId bigint;
+  Set @PolicyIssueId = SCOPE_IDENTITY ();       
+  Declare @CGSTTaxID int,@IGSTTaxID int, @SGSTTaxID int, @UGSTTaxID int;
+
+IF @CGSTTaxPremium > 0
+Begin
+	Select @CGSTTaxID= Tax_ID_Pk  from Tax_Master wher where Tax_Name='CGST'
+	INSERT INTO tbl_PAPolicyPremiumDetails(policyIssueID_FK,TaxID,BasicPremium,TaxPercentage,TaxPremium,CreatedDate)     
+	SELECT @PolicyIssueId ,@CGSTTaxID,@BasicPremium ,@CGSTTaxPercentage, @CGSTTaxPremium,GETDATE()     
+End
+IF @IGSTTaxPremium > 0
+Begin
+	Select @IGSTTaxID= Tax_ID_Pk  from Tax_Master wher where Tax_Name='IGST'
+	INSERT INTO tbl_PAPolicyPremiumDetails(policyIssueID_FK,TaxID,BasicPremium,TaxPercentage,TaxPremium,CreatedDate)     
+	SELECT @PolicyIssueId ,@IGSTTaxID, @BasicPremium ,@IGSTTaxPercentage, @IGSTTaxPremium,GETDATE()     
+End
+IF @SGSTTaxPremium > 0
+Begin
+	Select @SGSTTaxID= Tax_ID_Pk  from Tax_Master wher where Tax_Name='SGST'
+	INSERT INTO tbl_PAPolicyPremiumDetails(policyIssueID_FK,TaxID,BasicPremium,TaxPercentage,TaxPremium,CreatedDate)     
+	SELECT @PolicyIssueId ,@SGSTTaxID, @BasicPremium ,@SGSTTaxPercentage, @SGSTTaxPremium,GETDATE()     
+End
+IF @UGSTTaxPremium > 0
+Begin
+	Select @UGSTTaxID= Tax_ID_Pk  from Tax_Master wher where Tax_Name='UGST'
+	INSERT INTO tbl_PAPolicyPremiumDetails(policyIssueID_FK,TaxID,BasicPremium,TaxPercentage,TaxPremium,CreatedDate)     
+	SELECT @PolicyIssueId ,@UGSTTaxID, @BasicPremium ,@UGSTTaxPercentage, @UGSTTaxPremium,GETDATE()     
+End
+      
+    --Payment should be validate or not. it is configurable at Master Policy level.                    
+   DECLARE @IsPaymentValidateThroughWebAPIService BIT                    
+                        
+   SELECT                       
+    @IsPaymentValidateThroughWebAPIService = IsPaymentValidateThroughWebService                           
+   FROM                      
+    dbo.MasterPolicyDetails WITH(NOLOCK)                      
+   WHERE                      
+    @PolicyIssueDate BETWEEN StartDate AND CONVERT(DATETIME,CONVERT(NVARCHAR,EndDate,106) + ' 23:59:59:998')                      
+    AND CompanyId_FK = @CompanyID AND ProductID_FK = (SELECT ProductID_FK FROM Product_Plan_Mapping WITH(NOLOCK) WHERE PlanID_FK = @PlanID_FK)                
+            
+    UPDATE tbl_GPA_WebAPI_Input_Parameter SET [Message] = 'Successful' WHERE WebAPICallId = @WebAPICallId                    
+                            
+   SELECT                     
+   'Success' AS ReturnStatus,              
+   ISNULL(@Insured_Name,'') AS InsuredName,             
+   ISNULL(@Identification_number,'') AS IdentificationNo,            
+   ISNULL(@IsPaymentValidateThroughWebAPIService,0) AS IsPaymentValidateThroughWebAPI,          
+   ISNULL(@NetPremiumRate, 0) AS NetPremiumRate,          
+   ISNULL(@BasicPremium, 0) AS BasicPremium,          
+   ISNULL(@TaxPercentage, 0) AS TaxPercentage,          
+   ISNULL(@TaxPremium, 0) AS TaxPremium,          
+   ISNULL(@CertificateNumber, 0) AS CertificateNumber,                  
+   ISNULL(@CGSTTaxPercentage, 0) AS CGSTTaxPercentage,          
+   ISNULL(@IGSTTaxPercentage, 0) AS IGSTTaxPercentage,          
+   ISNULL(@SGSTTaxPercentage, 0) AS SGSTTaxPercentage,          
+   ISNULL(@UGSTTaxPercentage, 0) AS UGSTTaxPercentage,          
+   ISNULL(@KFCTaxPercentage, 0) AS KFCTaxPercentage,            
+   ISNULL(@CGSTTaxPremium, 0) AS CGSTTaxPremium,          
+   ISNULL(@IGSTTaxPremium, 0) AS IGSTTaxPremium,          
+   ISNULL(@SGSTTaxPremium, 0) AS SGSTTaxPremium,          
+   ISNULL(@UGSTTaxPremium, 0) AS UGSTTaxPremium,          
+   ISNULL(@KFCTaxPremium, 0) AS KFCTaxPremium,          
+   ISNULL(@ProposalNumber, '') AS ProposalNumber,           
+   ISNULL(@TransactionId, '') AS TransactionId,
+   CASE WHEN @PolicyType = 'Proposal And Payment' THEN ISNULL(@Payment_Reference_Number, '') ELSE ISNULL(@Payment_Reference_Number, '') END AS Payment_Reference_Number,
+   CASE WHEN @PolicyType = 'Proposal And Payment' THEN ISNULL(@Policy_Start_Date, '') ELSE ISNULL(@Policy_Start_Date, '') END AS Policy_Start_Date,
+   CASE WHEN @PolicyType = 'Proposal And Payment' THEN ISNULL(@Policy_End_Date, '') ELSE ISNULL(@Policy_End_Date, '') END AS Policy_End_Date,
+   CASE WHEN @PolicyType = 'Proposal And Payment' THEN ISNULL(@InputDateFormat, '') ELSE ISNULL(@InputDateFormat, '') END AS InputDateFormat;
+
+   --ISNULL(@GPADummyPolicyIssueID, '') AS PolicyIssueID         
+            
+     END                  
+  END                
+   ELSE                     
+   BEGIN                    
+    -- Comment Below Code after Testing                    
+    UPDATE tbl_GPA_WebAPI_Input_Parameter SET [Message] = 'Proposal does not pass the Validation Criteria. Some Error In Input Proposal.' WHERE WebAPICallId = @WebAPICallID;                 
+                          
+    -- Error in Data                    
+   SELECT                    
+  'Error' as ReturnStatus,          
+  ISNULL(@Insured_Name,'') InsuredName,             
+  ISNULL(@Identification_number,'') Identification_number,            
+  @IsDuplicate AS IsDuplicate,          
+  @NameofPlanExist AS NameofPlanExist,          
+  @DeptNameExist AS DeptNameExist,          
+  @IsGPAPlan AS IsGPAPlan,          
+  @BranchCodeExist AS BranchCodeExist,          
+  @UserProductPlanMappingExist AS UserProductPlanMappingExist,          
+  @UserExcelBranchUploadRight AS UserExcelBranchUploadRight,          
+  @CheckMasterPolicyAndPlan AS CheckMasterPolicyAndPlan,          
+  @PlanCompanyMappingExist AS PlanCompanyMappingExist,          
+  @CompanyBranchMappingExist AS CompanyBranchMappingExist,          
+  @BranchDeptMappingExist AS BranchDeptMappingExist,          
+  @ExcelUserDeptUploadRight AS ExcelUserDeptUploadRight,          
+  @IsIssueDateValidation AS IsIssueDateValidation,             
+  @StateExistinMOM AS StateExistinMOM,          
+  @IsValidCity AS IsValidCity,          
+  @IsValidPinCode AS IsValidPinCode,          
+  @IsValid_MobileNumber AS IsValid_MobileNumber,          
+  @IsValid_EmailID AS IsValid_EmailID,          
+  @IsvalidGSTIN AS IsvalidGSTIN,          
+  @ISvalidInsured_DOB AS ISvalidInsured_DOB,           
+  @IsValidAgeCheck AS IsValidAgeCheck,           
+  @IsValidRegistration_Number AS IsValidRegistration_Number,          
+  @IsValidRegistration_Date AS IsValidRegistration_Date,          
+  @IsValidSumInsured AS IsValidSumInsured,          
+  @IsValidSPCode AS IsValidSPCode,           
+  @IsValidServiceTaxDate AS IsValidServiceTaxDate,          
+  @IsValidSalutation AS IsValidSalutation,           
+  @IsValidGenderbySalutation AS IsValidGenderbySalutation,           
+  @IsValidNomineeGender AS IsValidNomineeGender,          
+  @IsValidCustomertype AS IsValidCustomertype,     
+  @IsValidRelationWithProposer AS IsValidRelationWithProposer,
+  --@IsValidLoanTenureEndDate AS IsValidLoanTenureEndDate,          
+  @IsValidABHAID AS IsValidABHAID,        
+  @ISValidABHAAddress AS IsValidABHAAddress,
+  @IsLimitTypeExists AS IsLimitTypeExists,
+  @IsCDAccountExist AS IsCDAccountExist,
+  @IsBalanceLimitOver AS BalanceLimitOverError,
+ -- @IsIdentificationNumberDuplicate AS IsIdentificationNumberDuplicate,
+  @IsDuplicatePaymentReferenceNumber AS IsDuplicatePaymentReferenceNumber,
+  @IsCompanyLimitTypeCD as IsCompanyLimitTypeCD,
+  @IsCompanyLimitTypeCDT as IsCompanyLimitTypeCDT,
+  @IsValidProductCodePP AS IsValidProductCodePP,
+  @isValidPaymentReferenceNumber AS IsValidPaymentReferenceNumber,
+  @IsValidPaymentCollectedByPartner AS IsValidPaymentCollectedByPartner,
+  @IsValidInputDateFormat AS IsValidInputDateFormat
+            
+            
+   END               
+   END    
+   ELSE
+   BEGIN
+   IF @IsIdentificationNumberDuplicate = 0 AND Upper(@SystemType) = 'WEBAPI'
+		BEGIN
+   DECLARE @Certificate_NumberDupRecord NVARCHAR(20)            
+   DECLARE @InsuredNameDup VARCHAR(100)            
+   DECLARE @PolicyIssueIDDupRecord BIGINT            
+   DECLARE @Identification_numberDup NVARCHAR(50)            
+   DECLARE @NetPremiumRateDup NUMERIC(18,2)            
+   DECLARE @BasicPremiumDup NUMERIC(18,2)          
+   DECLARE @Proposal_NumberDupRecord VARCHAR(20)
+			  SELECT Top 1 @Certificate_NumberDupRecord = Certificate_Number, @InsuredNameDup = @Insured_Name, @Identification_numberDup = IdentificationNumber,            
+   @PolicyIssueIDDupRecord = GPAPolicyIssueID, @NetPremiumRateDup = Total_Premium, @BasicPremiumDup = Basic_Premium, @Proposal_NumberDupRecord = ProposalNumber          
+   FROM PAPolicyIssuance WITH (NOLOCK)            
+   WHERE IdentificationNumber = @Identification_Number AND CompanyID_FK = @CompanyId  
+			
+			Declare @Exst_CGSTTaxID int,@Exst_IGSTTaxID int, @Exst_SGSTTaxID int, @Exst_UGSTTaxID int;
+
+			Select @Exst_CGSTTaxID= Tax_ID_Pk  from Tax_Master wher where Tax_Name='CGST'
+			SELECT @CGSTTaxPercentage= ISNULL(TaxPercentage,0), @CGSTTaxPremium= ISNULL(TaxPremium,0)  from   tbl_PAPolicyPremiumDetails where policyIssueID_FK = @PolicyIssueIDDupRecord
+			AND TaxID=@Exst_CGSTTaxID
+
+			Select @Exst_IGSTTaxID= Tax_ID_Pk  from Tax_Master wher where Tax_Name='IGST'
+			SELECT @IGSTTaxPercentage= ISNULL(TaxPercentage,0), @IGSTTaxPremium= ISNULL(TaxPremium,0)  from   tbl_PAPolicyPremiumDetails where policyIssueID_FK = @PolicyIssueIDDupRecord
+			AND TaxID=@Exst_IGSTTaxID
+
+			Select @Exst_SGSTTaxID= Tax_ID_Pk  from Tax_Master wher where Tax_Name='SGST'
+			SELECT @SGSTTaxPercentage= ISNULL(TaxPercentage,0), @SGSTTaxPremium= ISNULL(TaxPremium,0)  from   tbl_PAPolicyPremiumDetails where policyIssueID_FK = @PolicyIssueIDDupRecord
+			AND TaxID=@Exst_SGSTTaxID
+	
+			Select @Exst_UGSTTaxID= Tax_ID_Pk  from Tax_Master wher where Tax_Name='UGST'
+			SELECT @UGSTTaxPercentage= ISNULL(TaxPercentage,0), @UGSTTaxPremium= ISNULL(TaxPremium,0)  from   tbl_PAPolicyPremiumDetails where policyIssueID_FK = @PolicyIssueIDDupRecord
+			AND TaxID=@Exst_UGSTTaxID
+		END 
+
+		Select 'Error' as ReturnStatus ,
+		@InsuredNameDup AS InsuredName,
+		@IsIdentificationNumberDuplicate AS Identification_number,
+		@Certificate_NumberDupRecord AS Certificate_Number,
+		@PolicyIssueIDDupRecord AS PolicyIssueID,
+		@NetPremiumRateDup AS NetPremiumRate,
+		@BasicPremiumDup AS BasicPremium,
+		@Proposal_NumberDupRecord AS ProposalNumber,
+		ISNULL(@CGSTTaxPercentage,0) as CGSTTaxPercentage,
+		ISNULL(@CGSTTaxPremium,0) as CGSTTaxPremium,
+		ISNULL(@IGSTTaxPercentage,0) as IGSTTaxPercentage,
+		ISNULL(@IGSTTaxPremium,0) as IGSTTaxPremium,
+		ISNULL(@SGSTTaxPercentage,0) as SGSTTaxPercentage,
+		ISNULL(@SGSTTaxPremium,0) as SGSTTaxPremium,
+		ISNULL(@UGSTTaxPercentage,0) as UGSTTaxPercentage,
+		ISNULL(@UGSTTaxPremium,0) as UGSTTaxPremium,
+		@Identification_numberDup as IdentificationNumber
+	END 
+
+            
+ END TRY            
+ BEGIN CATCH            
+  UPDATE tbl_GPA_WebAPI_Input_Parameter SET [Message] = 'There is some issue in the system. Policy can not be issue.' WHERE WebAPICallId = @WebAPICallID                    
+                     
+   Select @ErrorMessage = ERROR_MESSAGE() + ' Line No. : ' + Convert(nvarchar(10),ERROR_LINE())   +' 1 Procedure: '+isnull(ERROR_PROCEDURE(),'')     
+   
+   DELETE FROM PAPolicyIssuance_DummyPolicyDetails WHERE IdentificationNumber = @Identification_number
+                    
+   EXEC usp_GPA_InsertPolicyGeneration_Log                     
+     'usp_GPA_CheckDataValidationOfProposalInsuranceThruWebAPI',                    
+     @CertificateNumber,                     
+     @Identification_number,                    
+     @ErrorMessage,                    
+     ''                    
+               
+ END CATCH            
+ END            
+            
+ EXEC usp_GPA_RequestResponseLogDetails_WebAPI @TokenIdOfLogTable, @Insured_Name,@Identification_number,'GPA','Proposal Completed_Sp','usp_GPA_CheckDataValidationOfProposalInsuranceThruWebAPI',@UserIpAddress               
+       
+            
+ END TRY            
+ BEGIN CATCH            
+  UPDATE tbl_GPA_WebAPI_Input_Parameter SET [Message] = 'There is some issue in the system. Policy can not be issue.' WHERE WebAPICallId = @WebAPICallID                    
+   Select @ErrorMessage = ERROR_MESSAGE() + ' Line No. : ' + Convert(nvarchar(10),ERROR_LINE())   +' 2 Procedure: '+isnull(ERROR_PROCEDURE(),'')  
+   
+   DELETE FROM PAPolicyIssuance_DummyPolicyDetails WHERE IdentificationNumber = @Identification_number
+                    
+  EXEC usp_GPA_InsertPolicyGeneration_Log                     
+     'usp_GPA_NET_CheckDataValidationOfProposalInsurancemigr',                    
+     @CertificateNumber,                     
+     @Identification_number,                    
+     @ErrorMessage,                    
+     ''                   
+ END CATCH            
+END          
+          
+          
+          
